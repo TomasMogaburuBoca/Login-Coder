@@ -19,6 +19,7 @@ app.use(session({
         cookie: {maxAge: 6000}
 }));
 
+const users = [];
 
 app.use(express.json());;
 app.use(express.static('public'))
@@ -29,43 +30,54 @@ getNameSession = req =>{
     }else return '';
 }
 
-/*--------ROUTES--------------*/
+
+/*--------REGISTER--------------*/
+app.get ('/register', (req, res) =>{
+    res.sendFile(__dirname + '/public/register.html')
+})
+
+app.post('/register', (req, res) =>{
+    const { name, password, direction } = req.body
+    const user = users.find(user => user.name == name)
+    if (user) {
+        res.redirect('register-error');
+    }
+    users.push({name, password, direction})
+    res.redirect('/login')
+})
+
+
+/*--------LOGIN--------------*/
 
 app.get('/login', (req, res) =>{
     res.sendFile (__dirname + '/public/login.html')
 })
 
-/*--------LOGIN--------------*/
-
 app.post('/login', (req, res) =>{
-    req.session.name = req.body;
-    req.session.password = req.body;
-    if(req.session.name && req.session.password){
-        res.send(`Welcome ${getNameSession(req)}!! You are inside`)
-    }else {
-        let {name} = req.body
-        req.session.name = name;
-        req.session.counter = 1;
-        res.send(`Welcome ${name}`)
+    const { name, password } = req.body
+    const user = users.find (user => user.name == name && user.password == password)
+    if (!user){
+        return res.render('Login-error');
     }
+
+    req.session.name = name;
+    req.session.counter = 0;
+    res.redirect('/data')
+
 })
 
-/*--------REGISTER--------------*/
-app.get ('/register', (req, res) =>{
-    let name = req.session.name
-    if(req.session.name && req.session.password){
-        res.send (`Welcome ${name}`)
-    } else ('You can not see the data')
-    res.redirect('/register')
-})
-
-
-
-
-/*--------START--------------*/
 
 /*--------DATA--------------*/
 
+app.get ('/data', (req, res) =>{
+    if (req.session.name){
+        req.session.counter++;
+        res.render('data', {
+            data: users.find (user => user.name == req.session.name),
+            counter: req.session.counter
+        })
+    }else {res.redirect('/login')}
+})
 
 /*--------LOGOUT--------------*/
 
@@ -77,6 +89,15 @@ app.get ('/logout', (req, res) =>{
         }else res.send ({error: 'Forget', body: err});
     });
 });
+
+/*--------START--------------*/
+app.get('/', (req, res) =>{
+    if (req.session.name){
+        res.redirect('/data');
+    }else {res.redirect('/login')}
+})
+
+
 
 const PORT = process.env.PORT || 8081 ;
 
